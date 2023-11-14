@@ -1,6 +1,11 @@
+mod peg;
+
 pub fn add(left: usize, right: usize) -> usize {
     left + right
 }
+
+// The public function for this library is parse
+pub use peg::parse;
 
 #[cfg(test)]
 mod tests {
