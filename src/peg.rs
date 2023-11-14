@@ -30,7 +30,6 @@ pub type Grammar<S> = HashMap<String, Rule<S>>;
 // The concrete syntax tree
 #[derive(Debug, Clone)]
 pub enum CST <'a, S : Stream>  {
-    Empty,
     Terminal(&'a S::Item),
     Node(String, Box<CST<'a, S>>),
     Sequence(Vec<CST<'a, S>>),
@@ -43,18 +42,24 @@ pub enum Error {
     CannotParseStream,
     CannotFindValidChoice,
     CannotMatchStreamItem,
-    ViolationCannotDropStreamItem,
+    EmptyNonOptionalParserResult,
     Unexpected,
 }
 
-fn zero_or_more<'a, S: Stream>(grammar: &'a Grammar<S>, rule: &'a Rule<S>, input: &'a S) -> Result<(&'a S, Vec<CST<'a, S>>), Error> {
+type ParserResult<'a, S> = Result<(&'a S, Option<CST<'a, S>>), Error>;
+type ParserResultMany<'a, S> = Result<(&'a S, Vec<CST<'a, S>>), Error>;
+
+fn zero_or_more<'a, S: Stream>(grammar: &'a Grammar<S>, rule: &'a Rule<S>, input: &'a S) -> ParserResultMany<'a, S> {
     let mut rest = input;
     let mut cst = Vec::new();
     loop {
         match parse_rule(grammar, rule, rest) {
-            Ok((new_rest, new_cst)) => {
+            Ok((new_rest, cst_op)) => {
                 rest = new_rest;
-                cst.push(new_cst);
+                match cst_op {
+                    Some(cst_op) => cst.push(cst_op),
+                    None => break,
+                }
             }
             Err(_) => break,
         }
@@ -63,17 +68,17 @@ fn zero_or_more<'a, S: Stream>(grammar: &'a Grammar<S>, rule: &'a Rule<S>, input
 }
 
 // Parse a rule
-pub fn parse_rule<'a, S: Stream>(grammar: &'a Grammar<S>, rule: &'a Rule<S>, input: &'a S) -> Result<(&'a S, CST<'a, S>), Error> {
+pub fn parse_rule<'a, S: Stream>(grammar: &'a Grammar<S>, rule: &'a Rule<S>, input: &'a S) -> ParserResult<'a, S> {
     match rule {
-        Rule::Empty => Ok((input, CST::Empty)),
+        Rule::Empty => Ok((input, None)),
 
         Rule::Terminal(t) => {
             match input.next() {
                 Some((rest, item)) => {
                     if item == t {
-                        Ok((rest, CST::Terminal(t)))
+                        Ok((rest, Some(CST::Terminal(t))))
                     } else {
-                        Err(Error::Unexpected)
+                        Err(Error::CannotMatchStreamItem)
                     }
                 }
                 None => Err(Error::CannotParseStream),
@@ -82,17 +87,20 @@ pub fn parse_rule<'a, S: Stream>(grammar: &'a Grammar<S>, rule: &'a Rule<S>, inp
         Rule::NonStream(name) => {
             let rule = grammar.get(name).ok_or(Error::CannotFindRule(name.to_string()))?;
             let (rest, res) = parse_rule(grammar, rule, input)?;
-            Ok((rest, CST::Node(name.to_string(), Box::new(res))))
+            Ok((rest, Some(CST::Node(name.to_string(), Box::new(res.ok_or(Error::EmptyNonOptionalParserResult)?)))))
         }
         Rule::Sequence(rules) => {
             let mut rest = input;
             let mut seq_node = Vec::new();
             for rule in rules {
-                let (new_rest, item) = parse_rule(grammar, rule, rest)?;
+                let (new_rest, item_op) = parse_rule(grammar, rule, rest)?;
                 rest = new_rest;
-                seq_node.push(item);
+                match item_op {
+                    Some(item_op) => seq_node.push(item_op),
+                    None => break,
+                }
             }
-            Ok((rest, CST::Sequence(seq_node)))
+            Ok((rest, Some(CST::Sequence(seq_node))))
         }
         Rule::Choice(rules) => {
             for rule in rules {
@@ -105,25 +113,25 @@ pub fn parse_rule<'a, S: Stream>(grammar: &'a Grammar<S>, rule: &'a Rule<S>, inp
         }
         Rule::Optional(rule) => {
             match parse_rule(grammar, rule, input) {
-                Ok((rest, cst)) => Ok((rest, cst)),
-                Err(_) => Ok((input, CST::Empty)),
+                Ok((rest, cst_op)) => Ok((rest, cst_op)),
+                Err(_) => Ok((input, None)),
             }
         }
         Rule::ZeroOrMore(rule) => {
             let (rest, cst) = zero_or_more(grammar, rule, input)?;
-            Ok((rest, CST::Sequence(cst)))
+            Ok((rest, Some(CST::Sequence(cst))))
         }
         Rule::OneOrMore(rule) => {
             let (rest, cst) = zero_or_more(grammar, rule, input)?;
             if cst.len() == 0 {
                 Err(Error::CannotMatchStreamItem)
             } else {
-                Ok((rest, CST::Sequence(cst)))
+                Ok((rest, Some(CST::Sequence(cst))))
             }
         }
         Rule::AndPredicate(rule) => {
             match parse_rule(grammar, rule, input) {
-                Ok((_, _)) => Ok((input, CST::Empty)),
+                Ok((_, _)) => Ok((input, None)),
                 Err(err) => Err(err),
             }
         }
@@ -131,7 +139,7 @@ pub fn parse_rule<'a, S: Stream>(grammar: &'a Grammar<S>, rule: &'a Rule<S>, inp
 }
 
 // Parse using a Grammar
-pub fn parse<'a, S: Stream>(grammar: &'a Grammar<S>, rule: &str, input: &'a S) -> Result<(&'a S, CST<'a, S>), Error> {
+pub fn parse<'a, S: Stream>(grammar: &'a Grammar<S>, rule: &str, input: &'a S) -> ParserResult<'a, S> {
     let rule = grammar.get(rule).ok_or(Error::CannotFindRule(rule.to_string()))?;
     let (rest, cst) = parse_rule(grammar, rule, input)?;
     Ok((rest, cst))
