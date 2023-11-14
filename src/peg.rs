@@ -1,14 +1,5 @@
 use std::collections::HashMap;
-
-
-// A trait for Streams
-
-pub trait Stream {
-    type Item : PartialEq + std::fmt::Debug;
-    fn next(&self) -> Option<(&Self, &Self::Item)>;
-    fn peek(&self) -> Option<&Self::Item>;
-    fn drop(& self) -> Option<&Self>;
-}
+use crate::streams::Stream;
 
 // A PEG rule
 #[derive(Debug, Clone)]
@@ -29,7 +20,7 @@ pub type Grammar<S> = HashMap<String, Rule<S>>;
 
 // The concrete syntax tree
 #[derive(Debug, Clone)]
-pub enum CST <'a, S : Stream>  {
+pub enum CST<'a, S: Stream> {
     Terminal(&'a S::Item),
     Node(String, Box<CST<'a, S>>),
     Sequence(Vec<CST<'a, S>>),
