@@ -12,9 +12,20 @@ mod tests {
         use super::*;
         let mut input = "a".chars();
         let mut grammar = Grammar::new();
-        grammar.insert("a".to_string(), Rule::Terminal('a'));
-        let (rest, cst) = parse(&grammar, "a", &mut input).unwrap();
+        grammar.insert("A".to_string(), Rule::Terminal('a'));
+        let (rest, cst) = parse(&grammar, "A", &mut input).unwrap();
         assert_eq!(rest.clone().next(), None);
         assert_eq!(cst, Some(CST::Terminal(&'a')));
+    }
+
+    #[test]
+    fn parse_a_or_b() {
+        use super::*;
+        let mut input = "b".chars();
+        let mut grammar = Grammar::new();
+        grammar.insert("AORB".to_string(), Rule::Choice(vec![Rule::Terminal('a'), Rule::Terminal('b')]));
+        let (rest, cst) = parse(&grammar, "AORB", &mut input).unwrap();
+        assert_eq!(rest.clone().next(), None);
+        assert_eq!(cst, Some(CST::Terminal(&'b')));
     }
 }

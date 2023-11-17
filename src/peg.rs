@@ -99,7 +99,8 @@ where
         }
         Rule::Choice(rules) => {
             for rule in rules {
-                match parse_rule(grammar, rule, input) {
+                let ni = &mut input.clone();
+                match parse_rule(grammar, rule, ni) {
                     Ok((rest, cst)) => return Ok((rest, cst)),
                     Err(_) => (),
                 }
