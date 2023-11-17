@@ -40,12 +40,9 @@ type ParserResult<'a, I, E> = Result<(I, Option<CST<'a, E>>), Error>;
 type ParserResultMany<'a, I, E> = Result<(I, Vec<CST<'a, E>>), Error>;
 
 fn zero_or_more<'a, I: Iterator + Clone>(grammar: &'a Grammar<I::Item>, rule: &'a Rule<I::Item>, input: &mut I) -> ParserResultMany<'a, I, I::Item>
-where
-    I::Item: PartialEq,
-{
+    where I::Item: PartialEq, {
     let mut cst = Vec::new();
     loop {
-
         match parse_rule(grammar, rule, input) {
             Ok((rest, cst_op)) => {
                 *input = rest;
@@ -61,10 +58,8 @@ where
 }
 
 // Parse a rule
-pub fn parse_rule<'a, I : Iterator + Clone>(grammar: &'a Grammar<I::Item>, rule: &'a Rule<I::Item>, input: &mut I) -> ParserResult<'a, I, I::Item>
-where
-    I::Item: PartialEq,
-{
+pub fn parse_rule<'a, I: Iterator + Clone>(grammar: &'a Grammar<I::Item>, rule: &'a Rule<I::Item>, input: &mut I) -> ParserResult<'a, I, I::Item>
+    where I::Item: PartialEq, {
     match rule {
         Rule::Empty => Ok((input.clone(), None)),
 
@@ -135,12 +130,13 @@ where
 }
 
 // Parse using a Grammar
-pub fn parse<'a, I: Iterator + Clone>(grammar: &'a Grammar<I::Item>, rule: &str, input: &mut I) -> ParserResult<'a, I, I::Item>
-where
-    I::Item: PartialEq,
-{
-    let rule = grammar.get(rule).ok_or(Error::CannotFindRule(rule.to_string()))?;
+pub fn parse<'a, I: Iterator + Clone>(grammar: &'a Grammar<I::Item>, rule_name: &str, input: &mut I) -> ParserResult<'a, I, I::Item>
+    where I::Item: PartialEq, {
+    let rule = grammar.get(rule_name).ok_or(Error::CannotFindRule(rule_name.to_string()))?;
     let (rest, cst) = parse_rule(grammar, rule, input)?;
-    Ok((rest, cst))
+    match cst {
+        Some(cst) => Ok((rest, Some(CST::Node(rule_name.to_string(), Box::new(cst))))),
+        None => Ok((rest, None)),
+    }
 }
 

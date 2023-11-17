@@ -15,7 +15,7 @@ mod tests {
         grammar.insert("A".to_string(), Rule::Terminal('a'));
         let (rest, cst) = parse(&grammar, "A", &mut input).unwrap();
         assert_eq!(rest.clone().next(), None);
-        assert_eq!(cst, Some(CST::Terminal(&'a')));
+        assert_eq!(cst, Some(CST::Node("A".to_string(), Box::new(CST::Terminal(&'a')))));
     }
 
     #[test]
@@ -26,6 +26,6 @@ mod tests {
         grammar.insert("AORB".to_string(), Rule::Choice(vec![Rule::Terminal('a'), Rule::Terminal('b')]));
         let (rest, cst) = parse(&grammar, "AORB", &mut input).unwrap();
         assert_eq!(rest.clone().next(), None);
-        assert_eq!(cst, Some(CST::Terminal(&'b')));
+        assert_eq!(cst, Some(CST::Node("AORB".to_string(), Box::new(CST::Terminal(&'b')))));
     }
 }
