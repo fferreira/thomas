@@ -1,7 +1,4 @@
 mod peg;
-mod streams;
-mod buffer;
-mod unicode_buffer;
 
 pub fn add(left: usize, right: usize) -> usize {
     left + right
