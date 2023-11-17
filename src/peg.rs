@@ -18,7 +18,7 @@ pub enum Rule<I> {
 pub type Grammar<S> = HashMap<String, Rule<S>>;
 
 // The concrete syntax tree
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum CST<'a, S> {
     Terminal(&'a S),
     Node(String, Box<CST<'a, S>>),
@@ -142,3 +142,4 @@ where
     let (rest, cst) = parse_rule(grammar, rule, input)?;
     Ok((rest, cst))
 }
+
