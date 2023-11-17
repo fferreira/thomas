@@ -28,4 +28,15 @@ mod tests {
         assert_eq!(rest.clone().next(), None);
         assert_eq!(cst, Some(CST::Node("AORB".to_string(), Box::new(CST::Terminal(&'b')))));
     }
+
+    #[test]
+    fn parse_many_a_or_b() {
+        use super::*;
+        let mut input = "b".chars();
+        let mut grammar = Grammar::new();
+        grammar.insert("AORB".to_string(), Rule::ZeroOrMore(Box::new(Rule::Choice(vec![Rule::Terminal('a'), Rule::Terminal('b')]))));
+        let (rest, cst) = parse(&grammar, "AORB", &mut input).unwrap();
+        assert_eq!(rest.clone().next(), None);
+        assert_eq!(cst, Some(CST::Node("AORB".to_string(), Box::new(CST::Terminal(&'b')))));
+    }
 }
