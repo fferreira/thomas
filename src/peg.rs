@@ -1,28 +1,28 @@
 use std::collections::HashMap;
 
 // A PEG rule
-#[derive(Debug, Clone)]
-pub enum Rule<I> {
+//#[derive(Debug, Clone)]
+pub enum Rule<I, O> {
     Empty,
-    Terminal(I),
+    Terminal(Box<dyn Fn(&I) -> Option<O>>),
     NonStream(String),
-    Sequence(Vec<Rule<I>>),
-    Choice(Vec<Rule<I>>),
-    Optional(Box<Rule<I>>),
-    ZeroOrMore(Box<Rule<I>>),
-    OneOrMore(Box<Rule<I>>),
-    AndPredicate(Box<Rule<I>>),
+    Sequence(Vec<Rule<I, O>>),
+    Choice(Vec<Rule<I, O>>),
+    Optional(Box<Rule<I, O>>),
+    ZeroOrMore(Box<Rule<I, O>>),
+    OneOrMore(Box<Rule<I, O>>),
+    AndPredicate(Box<Rule<I, O>>),
 }
 
 // The type of a PEG grammar is a map from rule names to rules
-pub type Grammar<S> = HashMap<String, Rule<S>>;
+pub type Grammar<I, O> = HashMap<String, Rule<I, O>>;
 
 // The concrete syntax tree
 #[derive(Debug, Clone, PartialEq)]
-pub enum CST<'a, I> {
-    Terminal(&'a I),
-    Node(String, Box<CST<'a, I>>),
-    Sequence(Vec<CST<'a, I>>),
+pub enum CST<O> {
+    Terminal(O),
+    Node(String, Box<CST<O>>),
+    Sequence(Vec<CST<O>>),
 }
 
 // Parser errors
@@ -36,11 +36,11 @@ pub enum Error {
     Unexpected,
 }
 
-type ParserResult<'a, I, E> = Result<(I, Option<CST<'a, E>>), Error>;
-type ParserResultMany<'a, I, E> = Result<(I, Vec<CST<'a, E>>), Error>;
+type ParserResult<'a, I, E> = Result<(I, Option<CST<E>>), Error>;
+type ParserResultMany<'a, I, E> = Result<(I, Vec<CST<E>>), Error>;
 
-fn zero_or_more<'a, I: Iterator + Clone>(grammar: &'a Grammar<I::Item>, rule: &'a Rule<I::Item>, input: &mut I) -> ParserResultMany<'a, I, I::Item>
-    where I::Item: Clone, I::Item: PartialEq, {
+fn zero_or_more<'a, I: Iterator + Clone, O : Clone>(grammar: &'a Grammar<I::Item, O>, rule: &'a Rule<I::Item, O>, input: &mut I) -> ParserResultMany<'a, I, O>
+    where I::Item: Clone, {
     let mut cst = Vec::new();
     loop {
         match parse_rule(grammar, rule, input) {
@@ -58,18 +58,17 @@ fn zero_or_more<'a, I: Iterator + Clone>(grammar: &'a Grammar<I::Item>, rule: &'
 }
 
 // Parse a rule
-pub fn parse_rule<'a, I: Iterator + Clone>(grammar: &'a Grammar<I::Item>, rule: &'a Rule<I::Item>, input: &mut I) -> ParserResult<'a, I, I::Item>
-    where I::Item: Clone, I::Item: PartialEq, {
+pub fn parse_rule<'a, I: Iterator + Clone, O : Clone>(grammar: &'a Grammar<I::Item, O>, rule: &'a Rule<I::Item, O>, input: &mut I) -> ParserResult<'a, I, O>
+    where I::Item: Clone {
     match rule {
         Rule::Empty => Ok((input.clone(), None)),
 
-        Rule::Terminal(t) => {
+        Rule::Terminal(f) => {
             match input.next() {
                 Some(item) => {
-                    if item == *t {
-                        Ok((input.clone(), Some(CST::Terminal(t))))
-                    } else {
-                        Err(Error::CannotMatchStreamItem)
+                    match f(&item) {
+                        Some(t) => Ok((input.clone(), Some(CST::Terminal(t)))),
+                        None => return Err(Error::CannotMatchStreamItem),
                     }
                 }
                 None => Err(Error::CannotParseStream),
@@ -134,8 +133,8 @@ pub fn parse_rule<'a, I: Iterator + Clone>(grammar: &'a Grammar<I::Item>, rule: 
 }
 
 // Parse using a Grammar
-pub fn parse<'a, I: Iterator + Clone>(grammar: &'a Grammar<I::Item>, rule_name: &str, input: &mut I) -> ParserResult<'a, I, I::Item>
-    where I::Item: Clone, I::Item: PartialEq, {
+pub fn parse<'a, I: Iterator + Clone, O : Clone>(grammar: &'a Grammar<I::Item, O>, rule_name: &str, input: &mut I) -> ParserResult<'a, I, O>
+    where I::Item: Clone {
     let rule = grammar.get(rule_name).ok_or(Error::CannotFindRule(rule_name.to_string()))?;
     let (rest, cst) = parse_rule(grammar, rule, input)?;
     match cst {
