@@ -2,15 +2,13 @@
 pub use peg::parse;
 
 mod peg;
+mod terminal;
 
 #[cfg(test)]
 mod tests {
     use crate::peg::{CST, Grammar, Rule};
+    use crate::terminal::unicode::{innit, is_cat};
 
-    // Fixme: move this to proper module
-    fn innit (a : char) -> Box<dyn Fn(&char) -> Option<char>> {
-        Box::new(move |c| if *c == a { Some(*c) } else { None })
-    }
 
     #[test]
     fn parse_a() {
@@ -66,5 +64,16 @@ mod tests {
         let (rest, cst) = parse(&grammar, "AORB", &mut input).unwrap();
         assert_eq!(rest.clone().next(), None);
         assert_eq!(cst, Some(CST::Node("AORB".to_string(), Box::new(CST::Sequence(vec![CST::Terminal('b'), CST::Terminal('a'), CST::Terminal('b')])))));
+    }
+
+    #[test]
+    fn parse_number() {
+        use super::*;
+        let mut input = "123".chars();
+        let mut grammar = Grammar::new();
+        grammar.insert("NUMBER".to_string(), Rule::OneOrMore(Box::new(Rule::Terminal(is_cat(unicode_general_category::GeneralCategory::DecimalNumber)))));
+        let (rest, cst) = parse(&grammar, "NUMBER", &mut input).unwrap();
+        assert_eq!(rest.clone().next(), None);
+        assert_eq!(cst, Some(CST::Node("NUMBER".to_string(), Box::new(CST::Sequence(vec![CST::Terminal('1'), CST::Terminal('2'), CST::Terminal('3')])))));
     }
 }
