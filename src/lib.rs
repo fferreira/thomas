@@ -1,5 +1,6 @@
 // The public function for this library is parse
 pub use peg::parse;
+pub use terminal::unicode::{innit, is_cat};
 
 mod peg;
 mod terminal;
@@ -7,8 +8,6 @@ mod terminal;
 #[cfg(test)]
 mod tests {
     use crate::peg::{CST, Grammar, Rule};
-    use crate::terminal::unicode::{innit, is_cat};
-
 
     #[test]
     fn parse_a() {
