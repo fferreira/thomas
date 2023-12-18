@@ -15,4 +15,9 @@ pub mod unicode {
     pub fn is_cat(a: GeneralCategory) -> Box<dyn Fn(&char) -> Option<char>> {
         Box::new(move |c| if get_general_category(*c) == a { Some(*c) } else { None })
     }
+
+    pub fn is_digit() -> Box<dyn Fn(&char) -> Option<char>> {
+        // Consider using unicode characters, but it may be too hard.
+        Box::new(move |c| if c.is_digit(10) { Some(*c) } else { None })
+    }
 }
