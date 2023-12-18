@@ -108,9 +108,10 @@ pub fn parse_rule<I: Iterator + Clone, O : Clone>(grammar: &Grammar<I::Item, O>,
             }
         }
         Rule::ZeroOrMore(rule) => {
+            let orig = input.clone();
             let (rest, csts) = zero_or_more(grammar, rule, input)?;
             match csts.len() {
-                0 => Ok((rest, None)),
+                0 => Ok((orig, None)),
                 1 => Ok((rest, Some(csts[0].clone()))),
                 _ => Ok((rest, Some(CST::Sequence(csts)))),
             }

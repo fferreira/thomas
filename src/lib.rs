@@ -83,8 +83,7 @@ mod tests {
         let mut grammar = Grammar::new();
         grammar.insert("ZERO".to_string(), Rule::ZeroOrMore(Box::new(Rule::Terminal(innit('0')))));
         let (rest, cst) = parse(&grammar, "ZERO", &mut input).unwrap();
-        //assert_eq!(rest.clone().next(), Some('1'));
-        assert_eq!(rest.clone().next(), None); //Fixme: this is wrong, it should be Some('1')
+        assert_eq!(rest.clone().next(), Some('1'));
         assert_eq!(cst, None); // when parsing zero or more, the result for an empty input is None (but it succeeds). I'm not completely sure this is the right behaviour.
     }
 
