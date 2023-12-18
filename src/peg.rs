@@ -36,10 +36,10 @@ pub enum Error {
     Unexpected,
 }
 
-type ParserResult<'a, I, E> = Result<(I, Option<CST<E>>), Error>;
-type ParserResultMany<'a, I, E> = Result<(I, Vec<CST<E>>), Error>;
+type ParserResult<I, E> = Result<(I, Option<CST<E>>), Error>;
+type ParserResultMany<I, E> = Result<(I, Vec<CST<E>>), Error>;
 
-fn zero_or_more<'a, I: Iterator + Clone, O : Clone>(grammar: &'a Grammar<I::Item, O>, rule: &'a Rule<I::Item, O>, input: &mut I) -> ParserResultMany<'a, I, O>
+fn zero_or_more<I: Iterator + Clone, O : Clone>(grammar: &Grammar<I::Item, O>, rule: &Rule<I::Item, O>, input: &mut I) -> ParserResultMany<I, O>
     where I::Item: Clone, {
     let mut cst = Vec::new();
     loop {
@@ -58,7 +58,7 @@ fn zero_or_more<'a, I: Iterator + Clone, O : Clone>(grammar: &'a Grammar<I::Item
 }
 
 // Parse a rule
-pub fn parse_rule<'a, I: Iterator + Clone, O : Clone>(grammar: &'a Grammar<I::Item, O>, rule: &'a Rule<I::Item, O>, input: &mut I) -> ParserResult<'a, I, O>
+pub fn parse_rule<I: Iterator + Clone, O : Clone>(grammar: &Grammar<I::Item, O>, rule: &Rule<I::Item, O>, input: &mut I) -> ParserResult<I, O>
     where I::Item: Clone {
     match rule {
         Rule::Empty => Ok((input.clone(), None)),
@@ -133,7 +133,7 @@ pub fn parse_rule<'a, I: Iterator + Clone, O : Clone>(grammar: &'a Grammar<I::It
 }
 
 // Parse using a Grammar
-pub fn parse<'a, I: Iterator + Clone, O : Clone>(grammar: &'a Grammar<I::Item, O>, rule_name: &str, input: &mut I) -> ParserResult<'a, I, O>
+pub fn parse<I: Iterator + Clone, O : Clone>(grammar: &Grammar<I::Item, O>, rule_name: &str, input: &mut I) -> ParserResult<I, O>
     where I::Item: Clone {
     let rule = grammar.get(rule_name).ok_or(Error::CannotFindRule(rule_name.to_string()))?;
     let (rest, cst) = parse_rule(grammar, rule, input)?;
