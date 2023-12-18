@@ -70,7 +70,7 @@ pub struct ParserInput<I> {
     pos: usize,
 }
 
-impl<I : Iterator> ParserInput<I> {
+impl<I: Iterator> ParserInput<I> {
     fn new(input: I) -> ParserInput<I> {
         ParserInput {
             input,
@@ -186,8 +186,6 @@ pub fn parse_rule<I: Iterator + Clone, O: Clone>(grammar: &Grammar<I::Item, O>, 
 
 fn apply_rule<'a, I, O>(grammar: &Grammar<I::Item, O>, memo: &mut MemoTable<I, O>, rule_name: &str, input: &mut ParserInput<I>) -> ParserResult<I, O>
     where I: Iterator + Clone, I::Item: Clone, O: Clone {
-    println!(">>>>>>>>>>>>>>{}", rule_name);
-
     if let Some(result) = memo.table.get(&(rule_name.into(), input.pos())) {
         return Ok(result.clone());
     }
