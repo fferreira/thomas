@@ -87,6 +87,20 @@ mod tests {
         assert_eq!(cst, None); // when parsing zero or more, the result for an empty input is None (but it succeeds). I'm not completely sure this is the right behaviour.
     }
 
+    #[test]
+    fn test_memoisation() {
+        use super::*;
+        let input = "acb".chars();
+        let mut grammar = Grammar::new();
+        grammar.insert("ABC".to_string(), Rule::Sequence(vec![Rule::Terminal(innit('a')), Rule::Terminal(innit('b')), Rule::Terminal(innit('c'))]));
+        grammar.insert("ACB".to_string(), Rule::Sequence(vec![Rule::Terminal(innit('a')), Rule::Terminal(innit('c')), Rule::Terminal(innit('b'))]));
+        grammar.insert("ABCorACB".to_string(), Rule::Choice(vec![Rule::NonStream("ABC".to_string()), Rule::NonStream("ACB".to_string())]));
+
+        let (rest, cst) = parse(&grammar, "ABCorACB", input).unwrap();
+        assert_eq!(rest.clone().next(), None);
+        assert_eq!(cst, Some(CST::Node("ABCorACB".to_string(), Box::new(CST::Node("ACB".to_string(), Box::new(CST::Sequence(vec![CST::Terminal('a'), CST::Terminal('c'), CST::Terminal('b')])))))));
+    }
+
     //#[test]
     fn left_recursion() {
         use super::*;
