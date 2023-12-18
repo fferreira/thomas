@@ -189,8 +189,9 @@ fn apply_rule<'a, I, O>(grammar: &Grammar<I::Item, O>, memo: &mut MemoTable<I, O
     if let Some(result) = memo.table.get(&(rule_name.into(), input.pos())) {
         return Ok(result.clone());
     }
+    let pos = input.pos();
     let (rest, cst) = parse_rule(grammar, memo, grammar.get(&rule_name)?, input)?;
-    memo.table.insert((rule_name.into(), input.pos()), (rest.clone(), cst.clone()));
+    memo.table.insert((rule_name.into(), pos), (rest.clone(), cst.clone()));
     Ok((rest, cst))
 }
 

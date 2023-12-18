@@ -26,7 +26,7 @@ mod tests {
         use super::*;
         let input = "b".chars();
         let mut grammar = Grammar::new();
-        grammar.insert("AORB".to_string(), Rule::Choice(vec![Rule::Terminal(innit('a')), Rule::Terminal(innit( 'b'))]));
+        grammar.insert("AORB".to_string(), Rule::Choice(vec![Rule::Terminal(innit('a')), Rule::Terminal(innit('b'))]));
         let (rest, cst) = parse(&grammar, "AORB", input).unwrap();
         assert_eq!(rest.clone().next(), None);
         assert_eq!(cst, Some(CST::Node("AORB".to_string(), Box::new(CST::Terminal('b')))));
@@ -92,13 +92,21 @@ mod tests {
         use super::*;
         let input = "acb".chars();
         let mut grammar = Grammar::new();
-        grammar.insert("ABC".to_string(), Rule::Sequence(vec![Rule::Terminal(innit('a')), Rule::Terminal(innit('b')), Rule::Terminal(innit('c'))]));
-        grammar.insert("ACB".to_string(), Rule::Sequence(vec![Rule::Terminal(innit('a')), Rule::Terminal(innit('c')), Rule::Terminal(innit('b'))]));
+        grammar.insert("A".to_string(), Rule::Terminal(innit('a')));
+        grammar.insert("B".to_string(), Rule::Terminal(innit('b')));
+        grammar.insert("C".to_string(), Rule::Terminal(innit('c')));
+        grammar.insert("ABC".to_string(), Rule::Sequence(vec![Rule::NonStream("A".to_string()), Rule::NonStream("B".to_string()), Rule::NonStream("C".to_string())]));
+        grammar.insert("ACB".to_string(), Rule::Sequence(vec![Rule::NonStream("A".to_string()), Rule::NonStream("C".to_string()), Rule::NonStream("B".to_string())]));
         grammar.insert("ABCorACB".to_string(), Rule::Choice(vec![Rule::NonStream("ABC".to_string()), Rule::NonStream("ACB".to_string())]));
 
         let (rest, cst) = parse(&grammar, "ABCorACB", input).unwrap();
         assert_eq!(rest.clone().next(), None);
-        assert_eq!(cst, Some(CST::Node("ABCorACB".to_string(), Box::new(CST::Node("ACB".to_string(), Box::new(CST::Sequence(vec![CST::Terminal('a'), CST::Terminal('c'), CST::Terminal('b')])))))));
+        assert_eq!(cst,
+                   Some(CST::Node("ABCorACB".to_string(),
+                                  Box::new(CST::Node("ACB".to_string(),
+                                                     Box::new(CST::Sequence(vec![CST::Node("A".to_string(), Box::new(CST::Terminal('a'))),
+                                                                                 CST::Node("C".to_string(), Box::new(CST::Terminal('c'))),
+                                                                                 CST::Node("B".to_string(), Box::new(CST::Terminal('b')))])))))));
     }
 
     //#[test]
