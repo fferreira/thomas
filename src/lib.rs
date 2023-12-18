@@ -75,4 +75,15 @@ mod tests {
         assert_eq!(rest.clone().next(), None);
         assert_eq!(cst, Some(CST::Node("NUMBER".to_string(), Box::new(CST::Sequence(vec![CST::Terminal('1'), CST::Terminal('2'), CST::Terminal('3')])))));
     }
+
+    #[test]
+    fn left_recursion() {
+        use super::*;
+        let mut input = "A".chars();
+        let mut grammar = Grammar::new();
+        grammar.insert("A".to_string(), Rule::Choice(vec![Rule::NonStream("A".to_string()), Rule::Terminal(innit('a'))]));
+        let (rest, cst) = parse(&grammar, "A", &mut input).unwrap();
+        assert_eq!(rest.clone().next(), None);
+        assert_eq!(cst, Some(CST::Node("A".to_string(), Box::new(CST::Terminal('a')))));
+    }
 }
