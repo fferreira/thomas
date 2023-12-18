@@ -54,6 +54,28 @@ mod tests {
     }
 
     #[test]
+    fn parse_optional_not_there() {
+        use super::*;
+        let input = "b".chars();
+        let mut grammar = Grammar::new();
+        grammar.insert("OPTIONAL".to_string(), Rule::Sequence(vec![Rule::Optional(Box::new(Rule::Terminal(innit('a')))), Rule::Terminal(innit('b'))]));
+        let (rest, cst) = grammar.parse("OPTIONAL", input).unwrap();
+        assert_eq!(rest.clone().next(), None);
+        assert_eq!(cst, Some(CST::Node("OPTIONAL".to_string(), Box::new(CST::Terminal('b')))));
+    }
+
+    #[test]
+    fn parse_optional_and_there() {
+        use super::*;
+        let input = "ab".chars();
+        let mut grammar = Grammar::new();
+        grammar.insert("OPTIONAL".to_string(), Rule::Sequence(vec![Rule::Optional(Box::new(Rule::Terminal(innit('a')))), Rule::Terminal(innit('b'))]));
+        let (rest, cst) = grammar.parse("OPTIONAL", input).unwrap();
+        assert_eq!(rest.clone().next(), None);
+        assert_eq!(cst, Some(CST::Node("OPTIONAL".to_string(), Box::new(CST::Sequence(vec![CST::Terminal('a'), CST::Terminal('b')])))));
+    }
+
+    #[test]
     fn parse_many_a_or_b_zero() {
         use super::*;
         let input = "".chars();

@@ -206,9 +206,10 @@ impl<I, O> Grammar<I, O>
                 Err(Error::CannotFindValidChoice)
             }
             Rule::Optional(rule) => {
+                let orig = input.clone();
                 match self.eval_rule(memo, rule, input) {
                     Ok((rest, cst_op)) => Ok((rest, cst_op)),
-                    Err(_) => Ok((input.clone(), None)),
+                    Err(_) => Ok((orig, None)),
                 }
             }
             Rule::ZeroOrMore(rule) => {
