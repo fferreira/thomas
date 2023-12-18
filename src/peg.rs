@@ -96,7 +96,7 @@ fn zero_or_more<I: Iterator + Clone, O: Clone>(grammar: &Grammar<I::Item, O>, me
     where I::Item: Clone, {
     let mut cst = Vec::new();
     loop {
-        match parse_rule(grammar, memo, rule, input) {
+        match eval_rule(grammar, memo, rule, input) {
             Ok((rest, cst_op)) => {
                 *input = rest;
                 match cst_op {
@@ -110,8 +110,8 @@ fn zero_or_more<I: Iterator + Clone, O: Clone>(grammar: &Grammar<I::Item, O>, me
     Ok((input.clone(), cst))
 }
 
-// Parse a rule
-pub fn parse_rule<I: Iterator + Clone, O: Clone>(grammar: &Grammar<I::Item, O>, memo: &mut MemoTable<I, O>, rule: &Rule<I::Item, O>, input: &mut ParserInput<I>) -> ParserResult<I, O>
+// evaluates parsing the body of a rule
+pub fn eval_rule<I: Iterator + Clone, O: Clone>(grammar: &Grammar<I::Item, O>, memo: &mut MemoTable<I, O>, rule: &Rule<I::Item, O>, input: &mut ParserInput<I>) -> ParserResult<I, O>
     where I::Item: Clone {
     match rule {
         Rule::Empty => Ok((input.clone(), None)),
@@ -134,7 +134,7 @@ pub fn parse_rule<I: Iterator + Clone, O: Clone>(grammar: &Grammar<I::Item, O>, 
         Rule::Sequence(rules) => {
             let mut seq_node = Vec::new();
             for rule in rules {
-                let (rest, item_op) = parse_rule(grammar, memo, rule, input)?;
+                let (rest, item_op) = eval_rule(grammar, memo, rule, input)?;
                 *input = rest;
                 match item_op {
                     Some(item_op) => seq_node.push(item_op),
@@ -146,7 +146,7 @@ pub fn parse_rule<I: Iterator + Clone, O: Clone>(grammar: &Grammar<I::Item, O>, 
         Rule::Choice(rules) => {
             for rule in rules {
                 let ni = &mut input.clone();
-                match parse_rule(grammar, memo, rule, ni) {
+                match eval_rule(grammar, memo, rule, ni) {
                     Ok((rest, cst)) => return Ok((rest, cst)),
                     Err(_) => (),
                 }
@@ -154,7 +154,7 @@ pub fn parse_rule<I: Iterator + Clone, O: Clone>(grammar: &Grammar<I::Item, O>, 
             Err(Error::CannotFindValidChoice)
         }
         Rule::Optional(rule) => {
-            match parse_rule(grammar, memo, rule, input) {
+            match eval_rule(grammar, memo, rule, input) {
                 Ok((rest, cst_op)) => Ok((rest, cst_op)),
                 Err(_) => Ok((input.clone(), None)),
             }
@@ -177,7 +177,7 @@ pub fn parse_rule<I: Iterator + Clone, O: Clone>(grammar: &Grammar<I::Item, O>, 
             }
         }
         Rule::AndPredicate(rule) => {
-            match parse_rule(grammar, memo, rule, input) {
+            match eval_rule(grammar, memo, rule, input) {
                 Ok((_, _)) => Ok((input.clone(), None)),
                 Err(err) => Err(err),
             }
@@ -185,6 +185,7 @@ pub fn parse_rule<I: Iterator + Clone, O: Clone>(grammar: &Grammar<I::Item, O>, 
     }
 }
 
+// applies a rule by name, using memoization
 fn apply_rule<'a, I, O>(grammar: &Grammar<I::Item, O>, memo: &mut MemoTable<I, O>, rule_name: &str, input: &mut ParserInput<I>) -> ParserResult<I, O>
     where I: Iterator + Clone, I::Item: Clone, O: Clone {
     if let Some(result) = memo.table.get(&(rule_name.into(), input.pos())) {
@@ -192,7 +193,7 @@ fn apply_rule<'a, I, O>(grammar: &Grammar<I::Item, O>, memo: &mut MemoTable<I, O
     }
     let pos = input.pos();
     memo.table.insert((rule_name.into(), pos), Err(Error::LeftRecursionNotSupported));
-    let (rest, cst) = parse_rule(grammar, memo, grammar.get(&rule_name)?, input)?;
+    let (rest, cst) = eval_rule(grammar, memo, grammar.get(&rule_name)?, input)?;
     memo.table.insert((rule_name.into(), pos), Ok((rest.clone(), cst.clone())));
     Ok((rest, cst))
 }
