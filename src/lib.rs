@@ -6,7 +6,29 @@ mod terminal;
 
 #[cfg(test)]
 mod tests {
+    use std::str::Chars;
     use crate::peg::{CST, Error, Grammar, Rule};
+
+    #[test]
+    fn parse_empty() {
+        let input = "x".chars();
+        let mut grammar : Grammar<Chars, char> = Grammar::new();
+        grammar.insert("EMPTY".to_string(), Rule::Empty);
+        let (rest, cst) = grammar.parse("EMPTY", input).unwrap();
+        assert_eq!(rest.clone().next(), Some('x'));
+        assert_eq!(cst, None);
+    }
+
+    #[test]
+    fn parse_empty_then_a() {
+        use super::*;
+        let input = "a".chars();
+        let mut grammar = Grammar::new();
+        grammar.insert("A".to_string(), Rule::Sequence(vec![Rule::Empty, Rule::Terminal(innit('a'))]));
+        let (rest, cst) = grammar.parse("A", input).unwrap();
+        assert_eq!(rest.clone().next(), None);
+        assert_eq!(cst, Some(CST::Node("A".to_string(), Box::new(CST::Terminal('a')))));
+    }
 
     #[test]
     fn parse_a() {
