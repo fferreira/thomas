@@ -186,10 +186,14 @@ impl<I, O> Grammar<I, O>
                     *input = rest;
                     match item_op {
                         Some(item_op) => seq_node.push(item_op),
-                        None => break,
+                        None => (),
                     }
                 }
-                Ok((input.clone(), Some(CST::Sequence(seq_node))))
+                match seq_node.len() { // This optimisation may prove to be a mistake. Consider having sequences of length 1, and even 0.
+                    0 => Ok((input.clone(), None)),
+                    1 => Ok((input.clone(), Some(seq_node[0].clone()))),
+                    _ => Ok((input.clone(), Some(CST::Sequence(seq_node))))
+                }
             }
             Rule::Choice(rules) => {
                 for rule in rules {
