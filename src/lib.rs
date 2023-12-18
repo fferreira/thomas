@@ -1,5 +1,4 @@
 // The public function for this library is parse
-pub use peg::parse;
 pub use terminal::unicode::{innit, is_cat};
 
 mod peg;
@@ -16,7 +15,7 @@ mod tests {
         let mut grammar = Grammar::new();
         // Rule to recognise a single 'a'
         grammar.insert("A".to_string(), Rule::Terminal(innit('a')));
-        let (rest, cst) = parse(&grammar, "A", input).unwrap();
+        let (rest, cst) = grammar.parse("A", input).unwrap();
         assert_eq!(rest.clone().next(), None);
         assert_eq!(cst, Some(CST::Node("A".to_string(), Box::new(CST::Terminal('a')))));
     }
@@ -27,7 +26,7 @@ mod tests {
         let input = "b".chars();
         let mut grammar = Grammar::new();
         grammar.insert("AORB".to_string(), Rule::Choice(vec![Rule::Terminal(innit('a')), Rule::Terminal(innit('b'))]));
-        let (rest, cst) = parse(&grammar, "AORB", input).unwrap();
+        let (rest, cst) = grammar.parse("AORB", input).unwrap();
         assert_eq!(rest.clone().next(), None);
         assert_eq!(cst, Some(CST::Node("AORB".to_string(), Box::new(CST::Terminal('b')))));
     }
@@ -38,7 +37,7 @@ mod tests {
         let input = "".chars();
         let mut grammar = Grammar::new();
         grammar.insert("AORB".to_string(), Rule::ZeroOrMore(Box::new(Rule::Choice(vec![Rule::Terminal(innit('a')), Rule::Terminal(innit('b'))]))));
-        let (rest, cst) = parse(&grammar, "AORB", input).unwrap();
+        let (rest, cst) = grammar.parse("AORB", input).unwrap();
         assert_eq!(rest.clone().next(), None);
         assert_eq!(cst, None);
     }
@@ -49,7 +48,7 @@ mod tests {
         let input = "b".chars();
         let mut grammar = Grammar::new();
         grammar.insert("AORB".to_string(), Rule::ZeroOrMore(Box::new(Rule::Choice(vec![Rule::Terminal(innit('a')), Rule::Terminal(innit('b'))]))));
-        let (rest, cst) = parse(&grammar, "AORB", input).unwrap();
+        let (rest, cst) = grammar.parse("AORB", input).unwrap();
         assert_eq!(rest.clone().next(), None);
         assert_eq!(cst, Some(CST::Node("AORB".to_string(), Box::new(CST::Terminal('b')))));
     }
@@ -60,7 +59,7 @@ mod tests {
         let input = "bab".chars();
         let mut grammar = Grammar::new();
         grammar.insert("AORB".to_string(), Rule::ZeroOrMore(Box::new(Rule::Choice(vec![Rule::Terminal(innit('a')), Rule::Terminal(innit('b'))]))));
-        let (rest, cst) = parse(&grammar, "AORB", input).unwrap();
+        let (rest, cst) = grammar.parse("AORB", input).unwrap();
         assert_eq!(rest.clone().next(), None);
         assert_eq!(cst, Some(CST::Node("AORB".to_string(), Box::new(CST::Sequence(vec![CST::Terminal('b'), CST::Terminal('a'), CST::Terminal('b')])))));
     }
@@ -71,7 +70,7 @@ mod tests {
         let input = "123".chars();
         let mut grammar = Grammar::new();
         grammar.insert("NUMBER".to_string(), Rule::OneOrMore(Box::new(Rule::Terminal(is_cat(unicode_general_category::GeneralCategory::DecimalNumber)))));
-        let (rest, cst) = parse(&grammar, "NUMBER", input).unwrap();
+        let (rest, cst) = grammar.parse("NUMBER", input).unwrap();
         assert_eq!(rest.clone().next(), None);
         assert_eq!(cst, Some(CST::Node("NUMBER".to_string(), Box::new(CST::Sequence(vec![CST::Terminal('1'), CST::Terminal('2'), CST::Terminal('3')])))));
     }
@@ -82,7 +81,7 @@ mod tests {
         let input = "1".chars();
         let mut grammar = Grammar::new();
         grammar.insert("ZERO".to_string(), Rule::ZeroOrMore(Box::new(Rule::Terminal(innit('0')))));
-        let (rest, cst) = parse(&grammar, "ZERO", input).unwrap();
+        let (rest, cst) = grammar.parse("ZERO", input).unwrap();
         assert_eq!(rest.clone().next(), Some('1'));
         assert_eq!(cst, None); // when parsing zero or more, the result for an empty input is None (but it succeeds). I'm not completely sure this is the right behaviour.
     }
@@ -99,7 +98,7 @@ mod tests {
         grammar.insert("ACB".to_string(), Rule::Sequence(vec![Rule::NonStream("A".to_string()), Rule::NonStream("C".to_string()), Rule::NonStream("B".to_string())]));
         grammar.insert("ABCorACB".to_string(), Rule::Choice(vec![Rule::NonStream("ABC".to_string()), Rule::NonStream("ACB".to_string())]));
 
-        let (rest, cst) = parse(&grammar, "ABCorACB", input).unwrap();
+        let (rest, cst) = grammar.parse("ABCorACB", input).unwrap();
         assert_eq!(rest.clone().next(), None);
         assert_eq!(cst,
                    Some(CST::Node("ABCorACB".to_string(),
@@ -115,7 +114,7 @@ mod tests {
         let input = "A".chars();
         let mut grammar = Grammar::new();
         grammar.insert("A".to_string(), Rule::Choice(vec![Rule::NonStream("A".to_string()), Rule::Terminal(innit('a'))]));
-        let res = parse(&grammar, "A", input);
+        let res = grammar.parse("A", input);
         assert!(res.is_err());
         assert_eq!(res.unwrap_err(), Error::CannotFindValidChoice);
         // let (rest, cst) = parse(&grammar, "A", input).unwrap();
