@@ -88,7 +88,7 @@ mod tests {
     }
 
     #[test]
-    fn test_memoisation() {
+    fn test_memoization() {
         use super::*;
         let input = "acb".chars();
         let mut grammar = Grammar::new();
