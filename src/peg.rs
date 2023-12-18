@@ -15,7 +15,23 @@ pub enum Rule<I, O> {
 }
 
 // The type of a PEG grammar is a map from rule names to rules
-pub type Grammar<I, O> = HashMap<String, Rule<I, O>>;
+pub struct Grammar<I, O> {
+    table: HashMap<String, Rule<I, O>>,
+}
+
+impl<I, O> Grammar<I, O> {
+    pub fn new() -> Grammar<I, O> {
+        Grammar {
+            table: HashMap::new(),
+        }
+    }
+    pub fn insert(&mut self, name: String, rule: Rule<I, O>) {
+        self.table.insert(name, rule);
+    }
+    pub fn get(&self, name: &str) -> Result<&Rule<I, O>, Error> {
+        self.table.get(name).ok_or(Error::CannotFindRule(name.to_string()))
+    }
+}
 
 // The concrete syntax tree
 #[derive(Debug, Clone, PartialEq)]
@@ -36,14 +52,50 @@ pub enum Error {
     Unexpected,
 }
 
-type ParserResult<I, E> = Result<(I, Option<CST<E>>), Error>;
-type ParserResultMany<I, E> = Result<(I, Vec<CST<E>>), Error>;
+type ParserOutput<I, E> = (ParserInput<I>, Option<CST<E>>);
+type ParserResult<I, E> = Result<ParserOutput<I, E>, Error>;
+type ParserOutputMany<I, E> = (ParserInput<I>, Vec<CST<E>>);
+type ParserResultMany<I, E> = Result<ParserOutputMany<I, E>, Error>;
 
-fn zero_or_more<I: Iterator + Clone, O : Clone>(grammar: &Grammar<I::Item, O>, rule: &Rule<I::Item, O>, input: &mut I) -> ParserResultMany<I, O>
+// Packrat style memoization table
+#[derive(Debug, Clone)]
+pub struct MemoTable<I, O> {
+    table: HashMap<(String, usize), ParserOutput<I, O>>,
+}
+
+// Parser input
+#[derive(Debug, Clone)]
+pub struct ParserInput<I> {
+    input: I,
+    pos: usize,
+}
+
+impl<I : Iterator> ParserInput<I> {
+    fn new(input: I) -> ParserInput<I> {
+        ParserInput {
+            input,
+            pos: 0,
+        }
+    }
+
+    pub fn next(&mut self) -> Option<I::Item> {
+        let item = self.input.next();
+        if item.is_some() {
+            self.pos += 1;
+        }
+        item
+    }
+
+    fn pos(&self) -> usize {
+        self.pos
+    }
+}
+
+fn zero_or_more<I: Iterator + Clone, O: Clone>(grammar: &Grammar<I::Item, O>, memo: &mut MemoTable<I, O>, rule: &Rule<I::Item, O>, input: &mut ParserInput<I>) -> ParserResultMany<I, O>
     where I::Item: Clone, {
     let mut cst = Vec::new();
     loop {
-        match parse_rule(grammar, rule, input) {
+        match parse_rule(grammar, memo, rule, input) {
             Ok((rest, cst_op)) => {
                 *input = rest;
                 match cst_op {
@@ -58,7 +110,7 @@ fn zero_or_more<I: Iterator + Clone, O : Clone>(grammar: &Grammar<I::Item, O>, r
 }
 
 // Parse a rule
-pub fn parse_rule<I: Iterator + Clone, O : Clone>(grammar: &Grammar<I::Item, O>, rule: &Rule<I::Item, O>, input: &mut I) -> ParserResult<I, O>
+pub fn parse_rule<I: Iterator + Clone, O: Clone>(grammar: &Grammar<I::Item, O>, memo: &mut MemoTable<I, O>, rule: &Rule<I::Item, O>, input: &mut ParserInput<I>) -> ParserResult<I, O>
     where I::Item: Clone {
     match rule {
         Rule::Empty => Ok((input.clone(), None)),
@@ -75,14 +127,13 @@ pub fn parse_rule<I: Iterator + Clone, O : Clone>(grammar: &Grammar<I::Item, O>,
             }
         }
         Rule::NonStream(name) => {
-            let rule = grammar.get(name).ok_or(Error::CannotFindRule(name.to_string()))?;
-            let (rest, res) = parse_rule(grammar, rule, input)?;
+            let (rest, res) = apply_rule(grammar, memo, name.as_str(), input)?;
             Ok((rest, Some(CST::Node(name.to_string(), Box::new(res.ok_or(Error::EmptyNonOptionalParserResult)?)))))
         }
         Rule::Sequence(rules) => {
             let mut seq_node = Vec::new();
             for rule in rules {
-                let (rest, item_op) = parse_rule(grammar, rule, input)?;
+                let (rest, item_op) = parse_rule(grammar, memo, rule, input)?;
                 *input = rest;
                 match item_op {
                     Some(item_op) => seq_node.push(item_op),
@@ -94,7 +145,7 @@ pub fn parse_rule<I: Iterator + Clone, O : Clone>(grammar: &Grammar<I::Item, O>,
         Rule::Choice(rules) => {
             for rule in rules {
                 let ni = &mut input.clone();
-                match parse_rule(grammar, rule, ni) {
+                match parse_rule(grammar, memo, rule, ni) {
                     Ok((rest, cst)) => return Ok((rest, cst)),
                     Err(_) => (),
                 }
@@ -102,14 +153,14 @@ pub fn parse_rule<I: Iterator + Clone, O : Clone>(grammar: &Grammar<I::Item, O>,
             Err(Error::CannotFindValidChoice)
         }
         Rule::Optional(rule) => {
-            match parse_rule(grammar, rule, input) {
+            match parse_rule(grammar, memo, rule, input) {
                 Ok((rest, cst_op)) => Ok((rest, cst_op)),
                 Err(_) => Ok((input.clone(), None)),
             }
         }
         Rule::ZeroOrMore(rule) => {
             let orig = input.clone();
-            let (rest, csts) = zero_or_more(grammar, rule, input)?;
+            let (rest, csts) = zero_or_more(grammar, memo, rule, input)?;
             match csts.len() {
                 0 => Ok((orig, None)),
                 1 => Ok((rest, Some(csts[0].clone()))),
@@ -117,7 +168,7 @@ pub fn parse_rule<I: Iterator + Clone, O : Clone>(grammar: &Grammar<I::Item, O>,
             }
         }
         Rule::OneOrMore(rule) => {
-            let (rest, cst) = zero_or_more(grammar, rule, input)?;
+            let (rest, cst) = zero_or_more(grammar, memo, rule, input)?;
             if cst.len() == 0 {
                 Err(Error::CannotMatchStreamItem)
             } else {
@@ -125,7 +176,7 @@ pub fn parse_rule<I: Iterator + Clone, O : Clone>(grammar: &Grammar<I::Item, O>,
             }
         }
         Rule::AndPredicate(rule) => {
-            match parse_rule(grammar, rule, input) {
+            match parse_rule(grammar, memo, rule, input) {
                 Ok((_, _)) => Ok((input.clone(), None)),
                 Err(err) => Err(err),
             }
@@ -133,11 +184,27 @@ pub fn parse_rule<I: Iterator + Clone, O : Clone>(grammar: &Grammar<I::Item, O>,
     }
 }
 
+fn apply_rule<'a, I, O>(grammar: &Grammar<I::Item, O>, memo: &mut MemoTable<I, O>, rule_name: &str, input: &mut ParserInput<I>) -> ParserResult<I, O>
+    where I: Iterator + Clone, I::Item: Clone, O: Clone {
+    println!(">>>>>>>>>>>>>>{}", rule_name);
+
+    if let Some(result) = memo.table.get(&(rule_name.into(), input.pos())) {
+        return Ok(result.clone());
+    }
+    let (rest, cst) = parse_rule(grammar, memo, grammar.get(&rule_name)?, input)?;
+    memo.table.insert((rule_name.into(), input.pos()), (rest.clone(), cst.clone()));
+    Ok((rest, cst))
+}
+
+
 // Parse using a Grammar
-pub fn parse<I: Iterator + Clone, O : Clone>(grammar: &Grammar<I::Item, O>, rule_name: &str, input: &mut I) -> ParserResult<I, O>
-    where I::Item: Clone {
-    let rule = grammar.get(rule_name).ok_or(Error::CannotFindRule(rule_name.to_string()))?;
-    let (rest, cst) = parse_rule(grammar, rule, input)?;
+pub fn parse<I: Iterator + Clone, O: Clone>(grammar: &Grammar<I::Item, O>, rule_name: &str, input: I) -> ParserResult<I, O>
+    where I::Item: Clone, I: Clone {
+    let mut memo = MemoTable {
+        table: HashMap::new(),
+    };
+
+    let (rest, cst) = apply_rule(grammar, &mut memo, rule_name.into(), &mut ParserInput::new(input))?;
     match cst {
         Some(cst) => Ok((rest, Some(CST::Node(rule_name.to_string(), Box::new(cst))))),
         None => Ok((rest, None)),
