@@ -42,13 +42,14 @@ pub enum CST<O> {
 }
 
 // Parser errors
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Error {
     CannotFindRule(String),
     CannotParseStream,
     CannotFindValidChoice,
     CannotMatchStreamItem,
     EmptyNonOptionalParserResult,
+    LeftRecursionNotSupported,
     Unexpected,
 }
 
@@ -60,7 +61,7 @@ type ParserResultMany<I, E> = Result<ParserOutputMany<I, E>, Error>;
 // Packrat style memoization table
 #[derive(Debug, Clone)]
 pub struct MemoTable<I, O> {
-    table: HashMap<(String, usize), ParserOutput<I, O>>,
+    table: HashMap<(String, usize), ParserResult<I, O>>,
 }
 
 // Parser input
@@ -187,11 +188,12 @@ pub fn parse_rule<I: Iterator + Clone, O: Clone>(grammar: &Grammar<I::Item, O>, 
 fn apply_rule<'a, I, O>(grammar: &Grammar<I::Item, O>, memo: &mut MemoTable<I, O>, rule_name: &str, input: &mut ParserInput<I>) -> ParserResult<I, O>
     where I: Iterator + Clone, I::Item: Clone, O: Clone {
     if let Some(result) = memo.table.get(&(rule_name.into(), input.pos())) {
-        return Ok(result.clone());
+        return result.clone();
     }
     let pos = input.pos();
+    memo.table.insert((rule_name.into(), pos), Err(Error::LeftRecursionNotSupported));
     let (rest, cst) = parse_rule(grammar, memo, grammar.get(&rule_name)?, input)?;
-    memo.table.insert((rule_name.into(), pos), (rest.clone(), cst.clone()));
+    memo.table.insert((rule_name.into(), pos), Ok((rest.clone(), cst.clone())));
     Ok((rest, cst))
 }
 

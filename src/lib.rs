@@ -7,7 +7,7 @@ mod terminal;
 
 #[cfg(test)]
 mod tests {
-    use crate::peg::{CST, Grammar, Rule};
+    use crate::peg::{CST, Error, Grammar, Rule};
 
     #[test]
     fn parse_a() {
@@ -109,14 +109,17 @@ mod tests {
                                                                                  CST::Node("B".to_string(), Box::new(CST::Terminal('b')))])))))));
     }
 
-    //#[test]
+    #[test]
     fn left_recursion() {
         use super::*;
         let input = "A".chars();
         let mut grammar = Grammar::new();
         grammar.insert("A".to_string(), Rule::Choice(vec![Rule::NonStream("A".to_string()), Rule::Terminal(innit('a'))]));
-        let (rest, cst) = parse(&grammar, "A", input).unwrap();
-        assert_eq!(rest.clone().next(), None);
-        assert_eq!(cst, Some(CST::Node("A".to_string(), Box::new(CST::Terminal('a')))));
+        let res = parse(&grammar, "A", input);
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err(), Error::CannotFindValidChoice);
+        // let (rest, cst) = parse(&grammar, "A", input).unwrap();
+        // assert_eq!(rest.clone().next(), None);
+        // assert_eq!(cst, Some(CST::Node("A".to_string(), Box::new(CST::Terminal('a')))));
     }
 }
