@@ -230,8 +230,9 @@ impl<I, O> Grammar<I, O>
                 }
             }
             Rule::AndPredicate(rule) => {
+                let orig = input.clone();
                 match self.eval_rule(memo, rule, input) {
-                    Ok((_, _)) => Ok((input.clone(), None)),
+                    Ok((_, _)) => Ok((orig, None)),
                     Err(err) => Err(err),
                 }
             }
