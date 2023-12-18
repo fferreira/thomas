@@ -1,5 +1,5 @@
 // The public function for this library is parse
-pub use terminal::unicode::{innit, is_cat};
+pub use terminal::unicode::{innit, is_cat, is_digit};
 
 mod peg;
 mod terminal;
@@ -150,6 +150,34 @@ mod tests {
                                                      Box::new(CST::Sequence(vec![CST::Node("A".to_string(), Box::new(CST::Terminal('a'))),
                                                                                  CST::Node("C".to_string(), Box::new(CST::Terminal('c'))),
                                                                                  CST::Node("B".to_string(), Box::new(CST::Terminal('b')))])))))));
+    }
+
+    #[test]
+    fn and_predicate_test_succeed(){
+        use super::*;
+        let input = "2".chars();
+        let mut grammar = Grammar::new();
+        grammar.insert("TWO".to_string(), Rule::Terminal(innit('2')));
+        grammar.insert("DIGIT".to_string(), Rule::Terminal(is_digit()));
+        // parses any digit as long as it is a 2
+        grammar.insert("PREDICATE".to_string(), Rule::Sequence(vec![Rule::AndPredicate(Box::new(Rule::NonStream("TWO".to_string()))), Rule::NonStream("DIGIT".to_string())]));
+        let (rest, cst) = grammar.parse("PREDICATE", input).unwrap();
+        assert_eq!(rest.clone().next(), None);
+        assert_eq!(cst, Some(CST::Node("PREDICATE".to_string(), Box::new(CST::Node("DIGIT".to_string(), Box::new(CST::Terminal('2')))))));
+    }
+
+    #[test]
+    fn and_predicate_test_fail(){
+        use super::*;
+        let input = "3".chars();
+        let mut grammar = Grammar::new();
+        grammar.insert("TWO".to_string(), Rule::Terminal(innit('2')));
+        grammar.insert("DIGIT".to_string(), Rule::Terminal(is_digit()));
+        // parses any digit as long as it is a 2
+        grammar.insert("PREDICATE".to_string(), Rule::Sequence(vec![Rule::AndPredicate(Box::new(Rule::NonStream("TWO".to_string()))), Rule::NonStream("DIGIT".to_string())]));
+        let res = grammar.parse("PREDICATE", input);
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err(), Error::CannotMatchStreamItem);
     }
 
     #[test]
