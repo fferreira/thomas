@@ -50,13 +50,13 @@ type ParserResultMany<I, E> = Result<ParserOutputMany<I, E>, Error>;
 
 // Packrat style memoization table
 #[derive(Debug, Clone)]
-struct MemoTable<I, O> {
+struct ParserState<I, O> {
     table: HashMap<(String, usize), ParserResult<I, O>>,
 }
 
-impl <I, O> MemoTable<I, O> {
-    fn new() -> MemoTable<I, O> {
-        MemoTable {
+impl <I, O> ParserState<I, O> {
+    fn new() -> ParserState<I, O> {
+        ParserState {
             table: HashMap::new(),
         }
     }
@@ -118,7 +118,7 @@ impl<I, O> Grammar<I, O>
 
     // Parse using a Grammar
     pub fn parse(&self, rule_name: &str, input: I) -> ParserResult<I, O> {
-        let mut memo = MemoTable::new();
+        let mut memo = ParserState::new();
 
         let (rest, cst) = self.apply_rule(&mut memo, rule_name.into(), &mut ParserInput::new(input))?;
         match cst {
@@ -128,7 +128,7 @@ impl<I, O> Grammar<I, O>
     }
 
     // applies a rule by name, using memoization
-    fn apply_rule(&self, memo: &mut MemoTable<I, O>, rule_name: &str, input: &mut ParserInput<I>) -> ParserResult<I, O>
+    fn apply_rule(&self, memo: &mut ParserState<I, O>, rule_name: &str, input: &mut ParserInput<I>) -> ParserResult<I, O>
         where I: Iterator + Clone, I::Item: Clone, O: Clone {
         if let Some(result) = memo.get(&(rule_name.into(), input.pos())) {
             return result.clone();
@@ -140,7 +140,7 @@ impl<I, O> Grammar<I, O>
         Ok((rest, cst))
     }
 
-    fn zero_or_more(&self, memo: &mut MemoTable<I, O>, rule: &Rule<I::Item, O>, input: &mut ParserInput<I>) -> ParserResultMany<I, O>
+    fn zero_or_more(&self, memo: &mut ParserState<I, O>, rule: &Rule<I::Item, O>, input: &mut ParserInput<I>) -> ParserResultMany<I, O>
         where I::Item: Clone, {
         let mut cst = Vec::new();
         loop {
@@ -159,7 +159,7 @@ impl<I, O> Grammar<I, O>
     }
 
     // evaluates parsing the body of a rule
-    fn eval_rule(&self, memo: &mut MemoTable<I, O>, rule: &Rule<I::Item, O>, input: &mut ParserInput<I>) -> ParserResult<I, O>
+    fn eval_rule(&self, memo: &mut ParserState<I, O>, rule: &Rule<I::Item, O>, input: &mut ParserInput<I>) -> ParserResult<I, O>
         where I::Item: Clone {
         match rule {
             Rule::Empty => Ok((input.clone(), None)),
