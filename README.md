@@ -36,6 +36,7 @@ Royal Holloway, University of London.
 
 - ... A million more things
 
+- Laurence Tratt identifies a problem with Warth's algorithm see this [blog] and technical report [techrep]
 
 ## References
 
@@ -44,3 +45,7 @@ parsers can support left recursion. In Proceedings of the 2008 ACM
 SIGPLAN symposium on Partial evaluation and semantics-based program
 manipulation (PEPM '08). Association for Computing Machinery, New
 York, NY, USA, 103–110. https://doi.org/10.1145/1328408.1328424
+
+[blog] https://tratt.net/laurie/blog/2011/parsing_the_solved_problem_that_isnt.html
+[techrep] https://tratt.net/laurie/research/pubs/html/tratt__direct_left_recursive_parsing_expression_grammars/
+
