@@ -63,6 +63,15 @@ let parse (g : grammar) (i : string) (s : string) : (tree *  string) option =
   p i (List.assoc i g) s
 
 
+let parens : grammar = [("S", Cho[Seq[Lit '(' ; Rul "S" ; Lit ')'] ; Emp])]
+
+let ta = parse parens "S" ""
+let tb = parse parens "S" "()"
+let tc = parse parens "S" "(())"
+let td = parse parens "S" "("
+let te = parse parens "S" ")"
+let tf = parse parens "S" "(()"
+
 let prod_parse (g : grammar) (i : string) (s : string) : (tree *  string) option =
   let used : string list ref = ref [] in
   let rec p (rn : string) (e : expr) (s : string) : (tree * string) option =
@@ -116,3 +125,10 @@ let t5b = prod_parse g "R" "2"
 let t5bb = prod_parse g "R" "3"
 let t6 = prod_parse g "R" "121"
 let t7 = prod_parse g "R" ""
+
+let t8a = prod_parse parens "S" ""
+let t8b = prod_parse parens "S" "()"
+let t8c = prod_parse parens "S" "(())"
+let t8d = prod_parse parens "S" "("
+let t8e = prod_parse parens "S" ")"
+let t8f = prod_parse parens "S" "(()"
